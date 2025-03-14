@@ -29,7 +29,7 @@ export function Navbar() {
   };
 
   const categories = [
-    { name: "New Arrivals", href: "/category/new-arrivals" },
+    { name: "Categorias", href: "/category/new-arrivals" },
     { name: "Tote Bags", href: "/category/tote-bags" },
     { name: "Crossbody", href: "/category/crossbody" },
     { name: "Clutches", href: "/category/clutches" },
@@ -123,6 +123,12 @@ export function Navbar() {
                     </div>
                   </div>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/" className="flex items-center">
+                      <ShoppingBag className="mr-2 h-4 w-4" />
+                      <span>Productos</span>
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/account" className="flex items-center">
                       <User className="mr-2 h-4 w-4" />
