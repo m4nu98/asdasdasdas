@@ -2,38 +2,37 @@
 
 import { useState } from "react"
 import { signIn } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-import { ShoppingBag } from "lucide-react"
+import { ShoppingBag, Eye, EyeOff } from "lucide-react"
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  })
   const [error, setError] = useState("")
-  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
     setError("")
+    setIsLoading(true)
 
     try {
       const result = await signIn("credentials", {
-        redirect: false,
-        email,
-        password,
+        email: formData.email,
+        password: formData.password,
+        redirect: true,
+        callbackUrl: "/"
       })
 
       if (result?.error) {
-        setError("Credenciales inválidas")
-        return
+        setError(result.error)
       }
-
-      router.push("/")
     } catch (error) {
       setError("Ocurrió un error al iniciar sesión")
     } finally {
@@ -41,12 +40,13 @@ export default function LoginPage() {
     }
   }
 
-  const handleGoogleSignIn = () => {
-    signIn("google", { callbackUrl: "/" })
-  }
-
-  const handleFacebookSignIn = () => {
-    signIn("facebook", { callbackUrl: "/" })
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+    setError("")
   }
 
   return (
@@ -56,50 +56,68 @@ export default function LoginPage() {
           <div className="flex justify-center mb-4">
             <ShoppingBag className="h-8 w-8 text-pink-600" />
           </div>
-          <CardTitle className="text-2xl font-bold">Bienvenido a Elegance</CardTitle>
-          <CardDescription className="text-gray-600">
-            Ingresa a tu cuenta para descubrir nuestra exclusiva colección
+          <CardTitle className="text-2xl font-bold">Iniciar Sesión</CardTitle>
+          <CardDescription>
+            Ingresa a tu cuenta de Elegance
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md">
-                {error}
-              </div>
-            )}
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email
               </label>
               <Input
                 id="email"
+                name="email"
                 type="email"
-                placeholder="nombre@ejemplo.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
                 required
+                value={formData.email}
+                onChange={handleChange}
                 disabled={isLoading}
                 className="border-gray-200 focus:border-pink-500 focus:ring-pink-500"
               />
             </div>
+
             <div className="space-y-2">
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Contraseña
               </label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isLoading}
-                className="border-gray-200 focus:border-pink-500 focus:ring-pink-500"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  className="border-gray-200 focus:border-pink-500 focus:ring-pink-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
-            <Button 
-              type="submit" 
+
+            {error && (
+              <div className="text-red-500 text-sm">
+                {error}
+              </div>
+            )}
+
+            <Button
+              type="submit"
               className="w-full bg-pink-600 hover:bg-pink-700"
               disabled={isLoading}
             >
@@ -117,11 +135,11 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <Button 
-                variant="outline" 
+            <div className="mt-6">
+              <Button
+                variant="outline"
                 className="w-full border-gray-200 hover:bg-gray-50"
-                onClick={handleGoogleSignIn}
+                onClick={() => signIn("google", { callbackUrl: "/" })}
                 disabled={isLoading}
               >
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
@@ -144,30 +162,13 @@ export default function LoginPage() {
                 </svg>
                 Google
               </Button>
-              <Button 
-                variant="outline" 
-                className="w-full border-gray-200 hover:bg-gray-50"
-                onClick={handleFacebookSignIn}
-                disabled={isLoading}
-              >
-                <svg className="mr-2 h-4 w-4" fill="#1877F2" viewBox="0 0 24 24">
-                  <path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.686 1.686 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647Z" />
-                </svg>
-                Facebook
-              </Button>
             </div>
           </div>
 
           <div className="mt-6 text-center text-sm">
-            <Link href="/forgot-password" className="text-pink-600 hover:text-pink-500">
-              ¿Olvidaste tu contraseña?
-            </Link>
-          </div>
-
-          <div className="mt-4 text-center text-sm">
-            <span className="text-gray-600">¿Nuevo en Elegance?</span>{" "}
+            <span className="text-gray-600">¿No tienes una cuenta?</span>{" "}
             <Link href="/signup" className="text-pink-600 hover:text-pink-500">
-              Crear una cuenta
+              Regístrate
             </Link>
           </div>
         </CardContent>

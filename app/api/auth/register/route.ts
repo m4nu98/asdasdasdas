@@ -1,10 +1,18 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import prisma from '@/lib/db';
+import { prisma } from '@/lib/prisma';
+import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
+import { sendVerificationEmail } from '@/lib/email';
 
-export async function POST(req: Request) {
+// Función para generar un token de verificación único
+function generateVerificationToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+export async function POST(request: Request) {
   try {
-    const body = await req.json();
+    const body = await request.json();
     const { firstName, lastName, email, phone, birthDate, password } = body;
 
     if (!firstName || !lastName || !email || !phone || !birthDate || !password) {
@@ -14,9 +22,11 @@ export async function POST(req: Request) {
       );
     }
 
-    // Verificar si el email ya está registrado
+    // Verificar si el usuario ya existe
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: {
+        email: email
+      }
     });
 
     if (existingUser) {
@@ -26,29 +36,52 @@ export async function POST(req: Request) {
       );
     }
 
-    // Hashear la contraseña
+    // Encriptar la contraseña
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Generar token de verificación
+    const verificationToken = generateVerificationToken();
+    console.log('Token generado:', verificationToken); // Log para depuración
 
     // Crear el usuario
     const user = await prisma.user.create({
       data: {
-        firstName,
-        lastName,
+        id: uuidv4(),
         email,
-        phone,
-        birthDate: new Date(birthDate),
         password: hashedPassword,
-      },
+        nombre: firstName,
+        apellido: lastName,
+        telefono: phone,
+        fechaDeNacimiento: new Date(birthDate),
+        verificationToken,
+        emailVerified: false
+      }
     });
 
+    console.log('Usuario creado:', user); // Log para depuración
+
+    // Enviar email de verificación
+    const emailSent = await sendVerificationEmail(email, verificationToken);
+
+    if (!emailSent) {
+      console.error('Error al enviar el email de verificación');
+      // No retornamos error al usuario, solo lo registramos
+    }
+
+    // Eliminar la contraseña del objeto de respuesta
+    const { password: _, ...userWithoutPassword } = user;
+
     return NextResponse.json(
-      { message: 'Usuario registrado exitosamente' },
+      { 
+        message: 'Usuario registrado exitosamente. Por favor, verifica tu email.',
+        user: userWithoutPassword 
+      },
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error al registrar usuario:', error);
+    console.error('Error en el registro:', error);
     return NextResponse.json(
-      { error: 'Error al crear la cuenta' },
+      { error: 'Error al registrar el usuario' },
       { status: 500 }
     );
   }

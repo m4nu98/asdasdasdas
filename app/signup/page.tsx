@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-import { ShoppingBag } from "lucide-react"
+import { ShoppingBag, Eye, EyeOff } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export default function SignUpPage() {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -17,8 +19,107 @@ export default function SignUpPage() {
     password: "",
     confirmPassword: "",
   })
+  const [errors, setErrors] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    birthDate: "",
+    password: "",
+    confirmPassword: "",
+  })
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
+  const validatePhone = (phone: string) => {
+    const phoneRegex = /^\+?[\d\s-()]{10,}$/
+    return phoneRegex.test(phone)
+  }
+
+  const validateForm = () => {
+    const newErrors = {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      birthDate: "",
+      password: "",
+      confirmPassword: "",
+    }
+
+    let isValid = true
+
+    // Validar nombre
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = "El nombre es requerido"
+      isValid = false
+    }
+
+    // Validar apellido
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = "El apellido es requerido"
+      isValid = false
+    }
+
+    // Validar email
+    if (!formData.email.trim()) {
+      newErrors.email = "El email es requerido"
+      isValid = false
+    } else if (!validateEmail(formData.email)) {
+      newErrors.email = "Ingresa un email válido"
+      isValid = false
+    }
+
+    // Validar teléfono
+    if (!formData.phone.trim()) {
+      newErrors.phone = "El teléfono es requerido"
+      isValid = false
+    } else if (!validatePhone(formData.phone)) {
+      newErrors.phone = "Ingresa un teléfono válido"
+      isValid = false
+    }
+
+    // Validar fecha de nacimiento
+    if (!formData.birthDate) {
+      newErrors.birthDate = "La fecha de nacimiento es requerida"
+      isValid = false
+    } else {
+      const birthDate = new Date(formData.birthDate)
+      const today = new Date()
+      const age = today.getFullYear() - birthDate.getFullYear()
+      if (age < 18) {
+        newErrors.birthDate = "Debes ser mayor de 18 años"
+        isValid = false
+      }
+    }
+
+    // Validar contraseña
+    if (!formData.password) {
+      newErrors.password = "La contraseña es requerida"
+      isValid = false
+    } else if (formData.password.length < 6) {
+      newErrors.password = "La contraseña debe tener al menos 6 caracteres"
+      isValid = false
+    }
+
+    // Validar confirmación de contraseña
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = "Confirma tu contraseña"
+      isValid = false
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Las contraseñas no coinciden"
+      isValid = false
+    }
+
+    setErrors(newErrors)
+    return isValid
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -26,18 +127,21 @@ export default function SignUpPage() {
       ...prev,
       [name]: value
     }))
+    // Limpiar error del campo cuando el usuario empieza a escribir
+    setErrors(prev => ({
+      ...prev,
+      [name]: ""
+    }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-    setError("")
-
-    if (formData.password !== formData.confirmPassword) {
-      setError("Las contraseñas no coinciden")
-      setIsLoading(false)
+    
+    if (!validateForm()) {
       return
     }
+
+    setIsLoading(true)
 
     try {
       const response = await fetch('/api/auth/register', {
@@ -55,13 +159,20 @@ export default function SignUpPage() {
         }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        throw new Error('Error al crear la cuenta')
+        throw new Error(data.error || 'Error al crear la cuenta')
       }
 
-      window.location.href = '/login'
+      // Redirigir a la página de éxito
+      router.push('/signup/success')
+
     } catch (error) {
-      setError('Error al crear la cuenta. Por favor, inténtalo de nuevo.')
+      setErrors(prev => ({
+        ...prev,
+        email: error instanceof Error ? error.message : 'Error al crear la cuenta'
+      }))
     } finally {
       setIsLoading(false)
     }
@@ -81,12 +192,6 @@ export default function SignUpPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md">
-                {error}
-              </div>
-            )}
-            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <div className="space-y-2">
                 <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
@@ -101,8 +206,13 @@ export default function SignUpPage() {
                   onChange={handleChange}
                   required
                   disabled={isLoading}
-                  className="border-gray-200 focus:border-pink-500 focus:ring-pink-500"
+                  className={`border-gray-200 focus:border-pink-500 focus:ring-pink-500 ${
+                    errors.firstName ? 'border-red-500' : ''
+                  }`}
                 />
+                {errors.firstName && (
+                  <p className="text-sm text-red-500 mt-1">{errors.firstName}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -118,8 +228,13 @@ export default function SignUpPage() {
                   onChange={handleChange}
                   required
                   disabled={isLoading}
-                  className="border-gray-200 focus:border-pink-500 focus:ring-pink-500"
+                  className={`border-gray-200 focus:border-pink-500 focus:ring-pink-500 ${
+                    errors.lastName ? 'border-red-500' : ''
+                  }`}
                 />
+                {errors.lastName && (
+                  <p className="text-sm text-red-500 mt-1">{errors.lastName}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -135,8 +250,13 @@ export default function SignUpPage() {
                   onChange={handleChange}
                   required
                   disabled={isLoading}
-                  className="border-gray-200 focus:border-pink-500 focus:ring-pink-500"
+                  className={`border-gray-200 focus:border-pink-500 focus:ring-pink-500 ${
+                    errors.email ? 'border-red-500' : ''
+                  }`}
                 />
+                {errors.email && (
+                  <p className="text-sm text-red-500 mt-1">{errors.email}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -152,8 +272,13 @@ export default function SignUpPage() {
                   onChange={handleChange}
                   required
                   disabled={isLoading}
-                  className="border-gray-200 focus:border-pink-500 focus:ring-pink-500"
+                  className={`border-gray-200 focus:border-pink-500 focus:ring-pink-500 ${
+                    errors.phone ? 'border-red-500' : ''
+                  }`}
                 />
+                {errors.phone && (
+                  <p className="text-sm text-red-500 mt-1">{errors.phone}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -168,8 +293,13 @@ export default function SignUpPage() {
                   onChange={handleChange}
                   required
                   disabled={isLoading}
-                  className="border-gray-200 focus:border-pink-500 focus:ring-pink-500"
+                  className={`border-gray-200 focus:border-pink-500 focus:ring-pink-500 ${
+                    errors.birthDate ? 'border-red-500' : ''
+                  }`}
                 />
+                {errors.birthDate && (
+                  <p className="text-sm text-red-500 mt-1">{errors.birthDate}</p>
+                )}
               </div>
 
               <div className="hidden md:block"></div>
@@ -178,34 +308,70 @@ export default function SignUpPage() {
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                   Contraseña
                 </label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  disabled={isLoading}
-                  className="border-gray-200 focus:border-pink-500 focus:ring-pink-500"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                    disabled={isLoading}
+                    className={`border-gray-200 focus:border-pink-500 focus:ring-pink-500 ${
+                      errors.password ? 'border-red-500' : ''
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="text-sm text-red-500 mt-1">{errors.password}</p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
                   Confirmar Contraseña
                 </label>
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  required
-                  disabled={isLoading}
-                  className="border-gray-200 focus:border-pink-500 focus:ring-pink-500"
-                />
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    required
+                    disabled={isLoading}
+                    className={`border-gray-200 focus:border-pink-500 focus:ring-pink-500 ${
+                      errors.confirmPassword ? 'border-red-500' : ''
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+                {errors.confirmPassword && (
+                  <p className="text-sm text-red-500 mt-1">{errors.confirmPassword}</p>
+                )}
               </div>
             </div>
 
