@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCart } from "@/components/cart-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ShoppingBag, Search, Menu, X, Heart, User, LogOut, ShoppingBasket } from "lucide-react";
+import { ShoppingBag, Search, Menu, X, Heart, User, LogOut, ShoppingBasket, ChevronDown, Percent } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { CartSheet } from "@/components/cart-sheet";
 import { useSession, signOut } from "next-auth/react";
@@ -16,6 +16,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function Navbar() {
@@ -23,18 +28,18 @@ export function Navbar() {
   const { totalItems } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: '/' });
   };
 
   const categories = [
-    { name: "Categorias", href: "/category/new-arrivals" },
-    { name: "Tote Bags", href: "/category/tote-bags" },
-    { name: "Crossbody", href: "/category/crossbody" },
-    { name: "Clutches", href: "/category/clutches" },
-    { name: "Backpacks", href: "/category/backpacks" },
-    { name: "Sale", href: "/category/sale" },
+    { name: "Bolsos de Mano", href: "/category/bolsos-de-mano", className: "", icon: null },
+    { name: "Bolsos de Hombro", href: "/category/bolsos-de-hombro", className: "", icon: null },
+    { name: "Mochilas Elegantes", href: "/category/mochilas-elegantes", className: "", icon: null },
+    { name: "Novedades", href: "/category/carteras-de-fiesta", className: "", icon: null },
+    { name: "Ofertas", href: "/category/ofertas", className: "text-pink-600 font-semibold", icon: <Percent className="h-4 w-4 text-pink-600" /> }
   ];
 
   return (
@@ -67,13 +72,29 @@ export function Navbar() {
 
           {/* Desktop navigation */}
           <nav className="hidden md:flex space-x-8">
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors">
+                Categorías <ChevronDown className="ml-1 h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                {categories.map((category) => (
+                  <DropdownMenuItem key={category.name} asChild>
+                    <Link href={category.href} className={`flex items-center justify-between w-full ${category.className || ''}`}>
+                      {category.name}
+                      {category.icon}
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             {categories.map((category) => (
               <Link
                 key={category.name}
                 href={category.href}
-                className="text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors"
+                className={`text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors flex items-center gap-1 ${category.className}`}
               >
                 {category.name}
+                {category.icon}
               </Link>
             ))}
           </nav>
@@ -130,7 +151,7 @@ export function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/account" className="flex items-center">
+                    <Link href="/dashboard" className="flex items-center">
                       <User className="mr-2 h-4 w-4" />
                       <span>Mi Cuenta</span>
                     </Link>
@@ -194,85 +215,49 @@ export function Navbar() {
         {isMenuOpen && (
           <div className="md:hidden py-4 border-t border-gray-200">
             <nav className="flex flex-col space-y-4">
-              {categories.map((category) => (
-                <Link
-                  key={category.name}
-                  href={category.href}
-                  className="text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {category.name}
-                </Link>
-              ))}
-              <div className="pt-4 border-t border-gray-200">
-                {session ? (
-                  <>
-                    <div className="flex items-center gap-3 py-3">
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={session.user?.image || `https://ui-avatars.com/api/?name=${session.user?.name}`} alt={session.user?.name || ""} />
-                        <AvatarFallback>{session.user?.name?.charAt(0) || "U"}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">{session.user?.name}</span>
-                        <span className="text-xs text-gray-500">{session.user?.email}</span>
-                      </div>
-                    </div>
+              <Collapsible
+                open={isCategoriesOpen}
+                onOpenChange={setIsCategoriesOpen}
+                className="space-y-2"
+              >
+                <CollapsibleTrigger asChild>
+                  <button className="flex items-center justify-between w-full px-2 py-1.5 text-sm font-medium text-gray-900">
+                    <span>Categorías</span>
+                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isCategoriesOpen ? 'transform rotate-180' : ''}`} />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-1">
+                  {categories.map((category) => (
                     <Link
-                      href="/account"
-                      className="flex items-center text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors py-2"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <User className="h-4 w-4 mr-2" />
-                      Mi Cuenta
-                    </Link>
-                    <Link
-                      href="/wishlist"
-                      className="flex items-center text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors py-2"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <Heart className="h-4 w-4 mr-2" />
-                      Mis Favoritos
-                    </Link>
-                    <Link
-                      href="/orders"
-                      className="flex items-center text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors py-2"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <ShoppingBasket className="h-4 w-4 mr-2" />
-                      Mis Compras
-                    </Link>
-                    <button
-                      className="flex items-center text-sm font-medium text-red-600 hover:text-red-700 transition-colors py-2 w-full"
+                      key={category.name}
+                      href={category.href}
+                      className={`block text-sm text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-colors px-4 py-1.5 rounded flex items-center justify-between ${category.className || ''}`}
                       onClick={() => {
                         setIsMenuOpen(false);
-                        handleSignOut();
+                        setIsCategoriesOpen(false);
                       }}
                     >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Cerrar Sesión
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      href="/login"
-                      className="flex items-center text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors py-2"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <User className="h-4 w-4 mr-2" />
-                      Iniciar Sesión
+                      {category.name}
+                      {category.icon}
                     </Link>
-                    <Link
-                      href="/signup"
-                      className="flex items-center text-sm font-medium text-pink-600 hover:text-pink-700 transition-colors py-2"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <User className="h-4 w-4 mr-2" />
-                      Crear Cuenta
-                    </Link>
-                  </>
-                )}
-              </div>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+              
+              <Link
+                href="/new-arrivals"
+                className="text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors px-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Novedades
+              </Link>
+              <Link
+                href="/sale"
+                className="text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors px-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Ofertas
+              </Link>
             </nav>
           </div>
         )}
