@@ -1,6 +1,6 @@
 import NextAuth from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
-import { prisma } from "@/lib/prisma"
+import prisma from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import GoogleProvider from "next-auth/providers/google"
 import CredentialsProvider from "next-auth/providers/credentials"
@@ -8,78 +8,91 @@ import CredentialsProvider from "next-auth/providers/credentials"
 export const authOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-    }),
     CredentialsProvider({
-      name: "credentials",
+      name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error('Credenciales requeridas')
+          throw new Error("Por favor ingresa tu email y contraseña")
         }
 
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email
+        try {
+          console.log('Intentando autenticar usuario:', credentials.email)
+          const user = await prisma.user.findUnique({
+            where: {
+              email: credentials.email
+            }
+          })
+
+          if (!user) {
+            console.log('Usuario no encontrado:', credentials.email)
+            throw new Error("Usuario no encontrado")
           }
-        })
 
-        if (!user) {
-          throw new Error('Email no registrado')
+          console.log('Usuario encontrado, verificando contraseña')
+          const isPasswordValid = await bcrypt.compare(
+            credentials.password,
+            user.password
+          )
+
+          if (!isPasswordValid) {
+            console.log('Contraseña incorrecta para usuario:', credentials.email)
+            throw new Error("Contraseña incorrecta")
+          }
+
+          console.log('Autenticación exitosa para usuario:', credentials.email)
+          return {
+            id: user.id,
+            email: user.email,
+            name: `${user.nombre} ${user.apellido}`,
+          }
+        } catch (error) {
+          console.error("Error en autenticación:", error)
+          if (error instanceof Error) {
+            throw new Error(error.message)
+          }
+          throw new Error("Error al iniciar sesión")
         }
-
-        if (!user.emailVerified) {
-          throw new Error('Por favor verifica tu email antes de iniciar sesión')
-        }
-
-        const isCorrectPassword = await bcrypt.compare(
-          credentials.password,
-          user.password
-        )
-
-        if (!isCorrectPassword) {
-          throw new Error('Contraseña incorrecta')
-        }
-
-        return user
       }
-    })
+    }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
   ],
   pages: {
     signIn: '/login',
-    error: '/auth/error', // Página personalizada de error
+    signUp: '/signup',
   },
   callbacks: {
     async jwt({ token, user, account }) {
-      if (user) {
-        token.id = user.id
-        // Añadir información adicional útil al token
-        token.role = user.role // Si tienes roles de usuario
-        token.emailVerified = user.emailVerified
-      }
-      // Añadir el tipo de proveedor al token
-      if (account) {
-        token.provider = account.provider
+      if (account && user) {
+        return {
+          ...token,
+          accessToken: account.access_token,
+          userId: user.id,
+          user: user,
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 hora
+        }
       }
       return token
     },
     async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id
-        // Pasar información adicional a la sesión
-        session.user.role = token.role
-        session.user.emailVerified = token.emailVerified
-        session.provider = token.provider
+      if (token) {
+        session.user = {
+          ...session.user,
+          id: token.userId,
+          ...token.user
+        }
+        session.accessToken = token.accessToken
       }
       return session
     },
     async redirect({ url, baseUrl }) {
-      // Validación más estricta de URLs
       if (url.startsWith(baseUrl)) {
         return url
       } else if (url.startsWith('/')) {
@@ -90,8 +103,8 @@ export const authOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 60 * 60, // 1 hora en segundos
-    updateAge: 30 * 60, // Actualizar la sesión cada 30 minutos
+    maxAge: 3600, // 1 hora
+    updateAge: 300, // 5 minutos
   },
   jwt: {
     maxAge: 60 * 60, // 1 hora en segundos

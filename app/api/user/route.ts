@@ -1,57 +1,76 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import prisma from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const email = searchParams.get('email')
-
-  console.log('📧 Email recibido:', email)
-
-  if (!email) {
-    console.log('❌ Email no proporcionado')
-    return NextResponse.json({ error: 'Email es requerido' }, { status: 400 })
-  }
-
   try {
-    console.log('🔍 Buscando usuario con email:', email)
+    console.log('Iniciando obtención de datos de usuario...')
     
+    const session = await getServerSession(authOptions)
+    console.log('Sesión:', session?.user?.email)
+    
+    if (!session?.user?.email) {
+      console.log('No hay sesión activa')
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      )
+    }
+
+    const { searchParams } = new URL(request.url)
+    const email = searchParams.get('email')
+    console.log('Email recibido:', email)
+
+    if (!email) {
+      console.log('No se proporcionó email')
+      return NextResponse.json(
+        { error: 'Email no proporcionado' },
+        { status: 400 }
+      )
+    }
+
+    console.log('Buscando usuario en la base de datos...')
     const user = await prisma.user.findUnique({
-      where: {
-        email: email,
-      },
+      where: { email },
       select: {
         nombre: true,
         apellido: true,
-        fechaDeNacimiento: true,
+        email: true,
         telefono: true,
-      },
+        fechaDeNacimiento: true
+      }
     })
 
-    console.log('📝 Datos obtenidos de la base de datos:', JSON.stringify(user, null, 2))
-
     if (!user) {
-      console.log('❌ Usuario no encontrado para el email:', email)
+      console.log('Usuario no encontrado')
       return NextResponse.json(
         { error: 'Usuario no encontrado' },
         { status: 404 }
       )
     }
 
-    // Asegurarnos de que la fecha se formatea correctamente
-    const formattedUser = {
-      ...user,
-      fechaDeNacimiento: user.fechaDeNacimiento ? new Date(user.fechaDeNacimiento).toISOString() : null,
+    console.log('Usuario encontrado:', user)
+
+    // Transformar la respuesta para el frontend
+    const transformedUser = {
+      nombre: user.nombre || '',
+      apellido: user.apellido || '',
+      email: user.email,
+      telefono: user.telefono || '',
+      fechaDeNacimiento: user.fechaDeNacimiento ? user.fechaDeNacimiento.toISOString() : ''
     }
 
-    console.log('✅ Datos formateados a enviar:', JSON.stringify(formattedUser, null, 2))
-    return NextResponse.json(formattedUser)
+    console.log('Enviando respuesta al frontend:', transformedUser)
+    return NextResponse.json(transformedUser)
   } catch (error) {
-    console.error('❌ Error detallado al obtener usuario:', error)
-    
+    console.error('Error detallado al obtener usuario:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
+    console.error('Mensaje de error:', errorMessage)
     return NextResponse.json(
       { 
         error: 'Error al obtener los datos del usuario',
-        details: error instanceof Error ? error.message : 'Error desconocido'
+        details: errorMessage
       },
       { status: 500 }
     )

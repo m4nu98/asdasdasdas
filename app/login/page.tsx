@@ -47,15 +47,35 @@ export default function LoginPage() {
       const result = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
-        redirect: true,
-        callbackUrl: "/"
+        redirect: false,
       })
 
       if (result?.error) {
-        setError(result.error)
+        console.log('Error de autenticación:', result.error)
+        switch (result.error) {
+          case "Usuario no encontrado":
+            setError("No existe una cuenta con este email. Por favor, regístrate primero")
+            break
+          case "Contraseña incorrecta":
+            setError("El email o la contraseña son incorrectos")
+            break
+          case "Por favor ingresa tu email y contraseña":
+            setError("Por favor ingresa tu email y contraseña")
+            break
+          default:
+            setError(result.error || "Ocurrió un error al iniciar sesión. Por favor, intenta nuevamente")
+        }
+      } else {
+        // Esperar un momento para que la sesión se actualice
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        // Forzar una actualización de la sesión
+        await router.refresh()
+        // Redirigir a la página principal y forzar una recarga completa
+        window.location.href = "/"
       }
     } catch (error) {
-      setError("Ocurrió un error al iniciar sesión")
+      console.error("Error durante el inicio de sesión:", error)
+      setError("Ocurrió un error al iniciar sesión. Por favor, intenta nuevamente")
     } finally {
       setIsLoading(false)
     }
@@ -98,6 +118,7 @@ export default function LoginPage() {
                 onChange={handleChange}
                 disabled={isLoading}
                 className="border-gray-200 focus:border-pink-500 focus:ring-pink-500"
+                placeholder="ejemplo@correo.com"
               />
             </div>
 
@@ -116,6 +137,7 @@ export default function LoginPage() {
                   onChange={handleChange}
                   disabled={isLoading}
                   className="border-gray-200 focus:border-pink-500 focus:ring-pink-500"
+                  placeholder="••••••••"
                 />
                 <button
                   type="button"
@@ -132,17 +154,24 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="text-red-500 text-sm">
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
                 {error}
               </div>
             )}
 
             <Button
               type="submit"
-              className="w-full bg-pink-600 hover:bg-pink-700"
+              className="w-full bg-pink-600 hover:bg-pink-700 h-11"
               disabled={isLoading}
             >
-              {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
+              {isLoading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Iniciando sesión...
+                </div>
+              ) : (
+                "Iniciar Sesión"
+              )}
             </Button>
           </form>
 
