@@ -16,35 +16,29 @@ export async function GET(request: Request) {
       );
     }
 
-    // Solo verificar si existe el token y el estado del usuario
-    const user = await prisma.user.findFirst({
-      where: { verificationToken: token },
-      select: {
-        emailVerified: true,
-      },
+    // Buscar token de confirmación
+    const tokenConfirmacion = await prisma.tokenConfirmacionEmail.findFirst({
+      where: { 
+        token,
+        utilizado: false,
+        expiresAt: {
+          gt: new Date() // Verificar que no haya expirado
+        }
+      }
     });
 
-    console.log('API Check Token - Estado del token:', user);
+    console.log('API Check Token - Estado del token:', tokenConfirmacion);
 
-    // Si no se encuentra el token
-    if (!user) {
-      console.log('API Check Token - Token no encontrado');
+    // Si no se encuentra el token o ha expirado
+    if (!tokenConfirmacion) {
+      console.log('API Check Token - Token no encontrado o expirado');
       return NextResponse.json(
         { error: 'El enlace de verificación es inválido o ha expirado.' },
         { status: 400 }
       );
     }
 
-    // Si el usuario ya está verificado
-    if (user.emailVerified) {
-      console.log('API Check Token - Email ya verificado');
-      return NextResponse.json(
-        { error: 'Este email ya ha sido verificado anteriormente.' },
-        { status: 400 }
-      );
-    }
-
-    // Token válido y no verificado
+    // Token válido y no utilizado
     return NextResponse.json({
       message: 'Token válido',
       valid: true

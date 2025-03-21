@@ -1,3 +1,6 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,16 +10,45 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id               String    @id @default(cuid())
-  email            String    @unique
-  password         String
-  nombre           String
-  apellido         String
-  telefono         String
-  fechaDeNacimiento DateTime
-  emailVerified    Boolean   @default(false)
-  verificationToken String?   @unique
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+model usuarios {
+  id                String    @id @default(cuid()) // Identificador único
+  email             String    @unique              // Correo electrónico único
+  password          String?                        // Contraseña hasheada (opcional para autenticación externa)
+  nombre            String                         // Nombre del usuario
+  apellido          String                         // Apellido del usuario
+  telefono          String?                        // Número de teléfono (opcional)
+  fechaDeNacimiento DateTime?                      // Fecha de nacimiento (opcional)
+  imagen            String?                        // URL de la imagen de perfil
+  createdAt         DateTime  @default(now())      // Fecha de creación del usuario
+  updatedAt         DateTime  @updatedAt           // Fecha de última actualización
+
+  // Campos para autenticación externa
+  proveedor         String                         // Proveedor de autenticación ("email", "google", etc.)
+  id_proveedor      String?   @unique              // ID único del proveedor externo
+
+  // Relaciones
+  tokensConfirmacion TokenConfirmacionEmail[]      // Relación con los tokens de confirmación
+  tokensCambioContraseña TokenCambioContraseña[]   // Relación con los tokens de cambio de contraseña
+}
+
+model TokenConfirmacionEmail {
+  id           String   @id @default(cuid()) // Identificador único
+  userId       String                       // Referencia al usuario
+  token        String   @unique             // Token único generado
+  createdAt    DateTime @default(now())     // Fecha de creación del token
+  expiresAt    DateTime                     // Fecha de expiración del token
+  utilizado    Boolean  @default(false)     // Indica si el token ya fue usado
+
+  usuario      usuarios @relation(fields: [userId], references: [id]) // Relación con el usuario
+}
+
+model TokenCambioContraseña {
+  id           String   @id @default(cuid()) // Identificador único
+  userId       String                       // Referencia al usuario
+  token        String   @unique             // Token único generado
+  createdAt    DateTime @default(now())     // Fecha de creación del token
+  expiresAt    DateTime                     // Fecha de expiración del token
+  utilizado    Boolean  @default(false)     // Indica si el token ya fue usado
+
+  usuario      usuarios @relation(fields: [userId], references: [id]) // Relación con el usuario
 }

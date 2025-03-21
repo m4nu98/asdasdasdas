@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma';
 
 export async function GET(request: Request) {
   try {
@@ -19,33 +19,27 @@ export async function GET(request: Request) {
       );
     }
 
-    // Buscar usuario por token
-    const user = await prisma.user.findFirst({
-      where: { verificationToken: token },
-      select: {
-        id: true,
-        email: true,
-        emailVerified: true,
-        verificationToken: true,
+    // Buscar token de confirmación
+    const tokenConfirmacion = await prisma.tokenConfirmacionEmail.findFirst({
+      where: { 
+        token,
+        utilizado: false,
+        expiresAt: {
+          gt: new Date() // Verificar que no haya expirado
+        }
       },
+      include: {
+        usuario: true
+      }
     });
 
-    console.log('API - Búsqueda por token:', user);
+    console.log('API - Búsqueda por token:', tokenConfirmacion);
 
-    // Si no se encuentra el token
-    if (!user) {
-      console.log('API - Token no encontrado');
+    // Si no se encuentra el token o ha expirado
+    if (!tokenConfirmacion) {
+      console.log('API - Token no encontrado o expirado');
       return NextResponse.json(
         { error: 'El enlace de verificación es inválido o ha expirado.' },
-        { status: 400 }
-      );
-    }
-
-    // Si ya está verificado
-    if (user.emailVerified) {
-      console.log('API - Email ya verificado');
-      return NextResponse.json(
-        { error: 'Este email ya ha sido verificado anteriormente.' },
         { status: 400 }
       );
     }
@@ -60,26 +54,21 @@ export async function GET(request: Request) {
 
     // Si es confirmación, actualizamos la base de datos
     if (isConfirm) {
-      const updatedUser = await prisma.user.update({
-        where: { id: user.id },
+      // Marcar el token como utilizado
+      await prisma.tokenConfirmacionEmail.update({
+        where: { id: tokenConfirmacion.id },
         data: {
-          emailVerified: true,
-          verificationToken: null,
-        },
-        select: {
-          id: true,
-          email: true,
-          emailVerified: true,
-        },
+          utilizado: true
+        }
       });
 
-      console.log('API - Usuario verificado exitosamente:', updatedUser);
+      console.log('API - Token marcado como utilizado');
+
       return NextResponse.json({
         message: 'Email verificado correctamente.',
         user: {
-          id: updatedUser.id,
-          email: updatedUser.email,
-          emailVerified: updatedUser.emailVerified,
+          id: tokenConfirmacion.usuario.id,
+          email: tokenConfirmacion.usuario.email
         },
       });
     }

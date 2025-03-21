@@ -189,7 +189,19 @@ export default function LoginPage() {
               <Button
                 variant="outline"
                 className="w-full border-gray-200 hover:bg-gray-50"
-                onClick={() => signIn("google", { callbackUrl: "/" })}
+                onClick={async () => {
+                  try {
+                    console.log('Iniciando proceso de login con Google...');
+                    setIsLoading(true);
+                    await signIn("google", { 
+                      callbackUrl: "/",
+                      redirect: true
+                    });
+                  } catch (error) {
+                    console.error('Error al iniciar sesión con Google:', error);
+                    setIsLoading(false);
+                  }
+                }}
                 disabled={isLoading}
               >
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">

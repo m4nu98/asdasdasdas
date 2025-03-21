@@ -7,24 +7,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import Link from "next/link"
 import { ShoppingBag, Eye, EyeOff } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { signIn } from "next-auth/react"
 
 export default function SignUpPage() {
   const router = useRouter()
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+    nombre: "",
+    apellido: "",
     email: "",
-    phone: "",
-    birthDate: "",
+    telefono: "",
+    fechaDeNacimiento: "",
     password: "",
     confirmPassword: "",
   })
   const [errors, setErrors] = useState({
-    firstName: "",
-    lastName: "",
+    nombre: "",
+    apellido: "",
     email: "",
-    phone: "",
-    birthDate: "",
+    telefono: "",
+    fechaDeNacimiento: "",
     password: "",
     confirmPassword: "",
   })
@@ -44,11 +45,11 @@ export default function SignUpPage() {
 
   const validateForm = () => {
     const newErrors = {
-      firstName: "",
-      lastName: "",
+      nombre: "",
+      apellido: "",
       email: "",
-      phone: "",
-      birthDate: "",
+      telefono: "",
+      fechaDeNacimiento: "",
       password: "",
       confirmPassword: "",
     }
@@ -56,14 +57,14 @@ export default function SignUpPage() {
     let isValid = true
 
     // Validar nombre
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = "El nombre es requerido"
+    if (!formData.nombre.trim()) {
+      newErrors.nombre = "El nombre es requerido"
       isValid = false
     }
 
     // Validar apellido
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = "El apellido es requerido"
+    if (!formData.apellido.trim()) {
+      newErrors.apellido = "El apellido es requerido"
       isValid = false
     }
 
@@ -77,24 +78,24 @@ export default function SignUpPage() {
     }
 
     // Validar teléfono
-    if (!formData.phone.trim()) {
-      newErrors.phone = "El teléfono es requerido"
+    if (!formData.telefono.trim()) {
+      newErrors.telefono = "El teléfono es requerido"
       isValid = false
-    } else if (!validatePhone(formData.phone)) {
-      newErrors.phone = "Ingresa un teléfono válido"
+    } else if (!validatePhone(formData.telefono)) {
+      newErrors.telefono = "Ingresa un teléfono válido"
       isValid = false
     }
 
     // Validar fecha de nacimiento
-    if (!formData.birthDate) {
-      newErrors.birthDate = "La fecha de nacimiento es requerida"
+    if (!formData.fechaDeNacimiento) {
+      newErrors.fechaDeNacimiento = "La fecha de nacimiento es requerida"
       isValid = false
     } else {
-      const birthDate = new Date(formData.birthDate)
+      const birthDate = new Date(formData.fechaDeNacimiento)
       const today = new Date()
       const age = today.getFullYear() - birthDate.getFullYear()
       if (age < 18) {
-        newErrors.birthDate = "Debes ser mayor de 18 años"
+        newErrors.fechaDeNacimiento = "Debes ser mayor de 18 años"
         isValid = false
       }
     }
@@ -150,11 +151,11 @@ export default function SignUpPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
+          nombre: formData.nombre,
+          apellido: formData.apellido,
           email: formData.email,
-          phone: formData.phone,
-          birthDate: formData.birthDate,
+          telefono: formData.telefono,
+          fechaDeNacimiento: formData.fechaDeNacimiento,
           password: formData.password,
         }),
       })
@@ -194,46 +195,46 @@ export default function SignUpPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <div className="space-y-2">
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="nombre" className="block text-sm font-medium text-gray-700">
                   Nombre
                 </label>
                 <Input
-                  id="firstName"
-                  name="firstName"
+                  id="nombre"
+                  name="nombre"
                   type="text"
                   placeholder="Ingresa tu nombre"
-                  value={formData.firstName}
+                  value={formData.nombre}
                   onChange={handleChange}
                   required
                   disabled={isLoading}
                   className={`border-gray-200 focus:border-pink-500 focus:ring-pink-500 ${
-                    errors.firstName ? 'border-red-500' : ''
+                    errors.nombre ? 'border-red-500' : ''
                   }`}
                 />
-                {errors.firstName && (
-                  <p className="text-sm text-red-500 mt-1">{errors.firstName}</p>
+                {errors.nombre && (
+                  <p className="text-sm text-red-500 mt-1">{errors.nombre}</p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="apellido" className="block text-sm font-medium text-gray-700">
                   Apellido
                 </label>
                 <Input
-                  id="lastName"
-                  name="lastName"
+                  id="apellido"
+                  name="apellido"
                   type="text"
                   placeholder="Ingresa tu apellido"
-                  value={formData.lastName}
+                  value={formData.apellido}
                   onChange={handleChange}
                   required
                   disabled={isLoading}
                   className={`border-gray-200 focus:border-pink-500 focus:ring-pink-500 ${
-                    errors.lastName ? 'border-red-500' : ''
+                    errors.apellido ? 'border-red-500' : ''
                   }`}
                 />
-                {errors.lastName && (
-                  <p className="text-sm text-red-500 mt-1">{errors.lastName}</p>
+                {errors.apellido && (
+                  <p className="text-sm text-red-500 mt-1">{errors.apellido}</p>
                 )}
               </div>
 
@@ -260,45 +261,45 @@ export default function SignUpPage() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="telefono" className="block text-sm font-medium text-gray-700">
                   Teléfono
                 </label>
                 <Input
-                  id="phone"
-                  name="phone"
+                  id="telefono"
+                  name="telefono"
                   type="tel"
                   placeholder="+54 (123) 456-7890"
-                  value={formData.phone}
+                  value={formData.telefono}
                   onChange={handleChange}
                   required
                   disabled={isLoading}
                   className={`border-gray-200 focus:border-pink-500 focus:ring-pink-500 ${
-                    errors.phone ? 'border-red-500' : ''
+                    errors.telefono ? 'border-red-500' : ''
                   }`}
                 />
-                {errors.phone && (
-                  <p className="text-sm text-red-500 mt-1">{errors.phone}</p>
+                {errors.telefono && (
+                  <p className="text-sm text-red-500 mt-1">{errors.telefono}</p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="birthDate" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="fechaDeNacimiento" className="block text-sm font-medium text-gray-700">
                   Fecha de Nacimiento
                 </label>
                 <Input
-                  id="birthDate"
-                  name="birthDate"
+                  id="fechaDeNacimiento"
+                  name="fechaDeNacimiento"
                   type="date"
-                  value={formData.birthDate}
+                  value={formData.fechaDeNacimiento}
                   onChange={handleChange}
                   required
                   disabled={isLoading}
                   className={`border-gray-200 focus:border-pink-500 focus:ring-pink-500 ${
-                    errors.birthDate ? 'border-red-500' : ''
+                    errors.fechaDeNacimiento ? 'border-red-500' : ''
                   }`}
                 />
-                {errors.birthDate && (
-                  <p className="text-sm text-red-500 mt-1">{errors.birthDate}</p>
+                {errors.fechaDeNacimiento && (
+                  <p className="text-sm text-red-500 mt-1">{errors.fechaDeNacimiento}</p>
                 )}
               </div>
 
@@ -400,7 +401,19 @@ export default function SignUpPage() {
               <Button 
                 variant="outline" 
                 className="w-full sm:w-auto sm:min-w-[200px] border-gray-200 hover:bg-gray-50"
-                onClick={() => {}}
+                onClick={async () => {
+                  try {
+                    console.log('Iniciando proceso de registro con Google...');
+                    setIsLoading(true);
+                    await signIn("google", { 
+                      callbackUrl: "/",
+                      redirect: true
+                    });
+                  } catch (error) {
+                    console.error('Error al registrarse con Google:', error);
+                    setIsLoading(false);
+                  }
+                }}
                 disabled={isLoading}
               >
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
