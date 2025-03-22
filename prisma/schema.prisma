@@ -18,7 +18,6 @@ model usuarios {
   apellido          String                         // Apellido del usuario
   telefono          String?                        // Número de teléfono (opcional)
   fechaDeNacimiento DateTime?                      // Fecha de nacimiento (opcional)
-  imagen            String?                        // URL de la imagen de perfil
   createdAt         DateTime  @default(now())      // Fecha de creación del usuario
   updatedAt         DateTime  @updatedAt           // Fecha de última actualización
 

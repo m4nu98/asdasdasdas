@@ -187,6 +187,23 @@ export const authOptions = {
             throw new Error("Contraseña incorrecta")
           }
 
+          // Verificar si el usuario ha confirmado su email
+          if (user.proveedor === 'email') {
+            console.log('Verificando confirmación de email para usuario con proveedor email')
+            const tokenConfirmacion = await prisma.tokenConfirmacionEmail.findFirst({
+              where: {
+                userId: user.id,
+                utilizado: true
+              }
+            })
+
+            if (!tokenConfirmacion) {
+              console.log('Email no verificado para el usuario:', credentials.email)
+              throw new Error("Por favor, verifica tu email antes de iniciar sesión")
+            }
+          }
+          // Si el proveedor es Google, no es necesario verificar el email
+
           console.log('Autenticación exitosa para usuario:', credentials.email)
           return {
             id: user.id,

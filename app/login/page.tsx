@@ -62,6 +62,9 @@ export default function LoginPage() {
           case "Por favor ingresa tu email y contraseña":
             setError("Por favor ingresa tu email y contraseña")
             break
+          case "Por favor, verifica tu email antes de iniciar sesión":
+            setError("Por favor, verifica tu email haciendo clic en el enlace que enviamos a tu correo electrónico")
+            break
           default:
             setError(result.error || "Ocurrió un error al iniciar sesión. Por favor, intenta nuevamente")
         }
