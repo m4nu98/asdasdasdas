@@ -7,10 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Navbar } from "@/components/navbar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { User, Package, Heart, Lock, Pencil, MapPin, Plus } from "lucide-react"
+import { User, Package, Heart, Lock, Pencil, MapPin, Plus, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface UserData {
   nombre: string;
@@ -114,6 +117,23 @@ export default function DashboardPage() {
     telefono: '',
     fechaDeNacimiento: '',
   })
+  const [direcciones, setDirecciones] = useState<Address[]>([])
+  const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [addressToDelete, setAddressToDelete] = useState<string | null>(null)
+  const [addressFormData, setAddressFormData] = useState({
+    calle: '',
+    numeroExterior: '',
+    numeroInterior: '',
+    colonia: '',
+    ciudad: '',
+    estado: '',
+    codigoPostal: '',
+    predeterminada: false
+  })
+  const [addressErrors, setAddressErrors] = useState<{[key: string]: string}>({})
+  const [isSubmittingAddress, setIsSubmittingAddress] = useState(false)
+  const [isDeletingAddress, setIsDeletingAddress] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -162,8 +182,27 @@ export default function DashboardPage() {
       }
     }
 
+    async function fetchDirecciones() {
+      if (session?.user?.email) {
+        try {
+          const response = await fetch('/api/direcciones')
+          const data = await response.json()
+
+          if (response.ok) {
+            console.log('Direcciones recibidas:', data)
+            setDirecciones(data)
+          } else {
+            console.error('Error al obtener direcciones:', data.error)
+          }
+        } catch (error) {
+          console.error('Error al obtener direcciones:', error)
+        }
+      }
+    }
+
     if (session?.user?.email) {
       fetchUserData()
+      fetchDirecciones()
     }
   }, [session, toast])
 
@@ -221,6 +260,183 @@ export default function DashboardPage() {
       ...prev,
       [e.target.name]: e.target.value
     }))
+  }
+
+  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setAddressFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+    // Limpiar error si el usuario comienza a escribir
+    if (addressErrors[name]) {
+      setAddressErrors(prev => {
+        const newErrors = {...prev}
+        delete newErrors[name]
+        return newErrors
+      })
+    }
+  }
+
+  const handleSelectChange = (value: string, name: string) => {
+    setAddressFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+    // Limpiar error si el usuario selecciona un valor
+    if (addressErrors[name]) {
+      setAddressErrors(prev => {
+        const newErrors = {...prev}
+        delete newErrors[name]
+        return newErrors
+      })
+    }
+  }
+
+  const handleCheckboxChange = (checked: boolean) => {
+    setAddressFormData(prev => ({
+      ...prev,
+      predeterminada: checked
+    }))
+  }
+
+  const validateAddressForm = () => {
+    const errors: {[key: string]: string} = {}
+    
+    if (!addressFormData.calle.trim()) {
+      errors.calle = "La calle es requerida"
+    }
+    
+    if (!addressFormData.numeroExterior.trim()) {
+      errors.numeroExterior = "El número exterior es requerido"
+    }
+    
+    if (!addressFormData.colonia.trim()) {
+      errors.colonia = "La colonia es requerida"
+    }
+    
+    if (!addressFormData.ciudad.trim()) {
+      errors.ciudad = "La ciudad es requerida"
+    }
+    
+    if (!addressFormData.estado.trim()) {
+      errors.estado = "El estado es requerido"
+    }
+    
+    if (!addressFormData.codigoPostal.trim()) {
+      errors.codigoPostal = "El código postal es requerido"
+    } else if (!/^\d{5}$/.test(addressFormData.codigoPostal)) {
+      errors.codigoPostal = "El código postal debe tener 5 dígitos"
+    }
+    
+    setAddressErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  const handleAddressSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!validateAddressForm()) {
+      return
+    }
+    
+    setIsSubmittingAddress(true)
+    
+    try {
+      const response = await fetch('/api/direcciones', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(addressFormData)
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        toast({
+          title: "Dirección agregada",
+          description: "La dirección ha sido guardada correctamente"
+        })
+        
+        // Actualizar lista de direcciones
+        setDirecciones(prev => [...prev, data])
+        
+        // Cerrar modal y limpiar formulario
+        setIsAddressDialogOpen(false)
+        setAddressFormData({
+          calle: '',
+          numeroExterior: '',
+          numeroInterior: '',
+          colonia: '',
+          ciudad: '',
+          estado: '',
+          codigoPostal: '',
+          predeterminada: false
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "No se pudo guardar la dirección",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error('Error al guardar dirección:', error)
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al guardar la dirección",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSubmittingAddress(false)
+    }
+  }
+
+  const handleDeleteAddress = async (addressId: string) => {
+    setAddressToDelete(addressId)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!addressToDelete) return
+
+    setIsDeletingAddress(true)
+    
+    try {
+      const response = await fetch(`/api/direcciones?id=${addressToDelete}`, {
+        method: 'DELETE'
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        toast({
+          title: "Dirección eliminada",
+          description: "La dirección ha sido eliminada correctamente"
+        })
+        
+        // Actualizar lista de direcciones
+        setDirecciones(prev => prev.filter(dir => dir.id !== addressToDelete))
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "No se pudo eliminar la dirección",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error('Error al eliminar dirección:', error)
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al eliminar la dirección",
+        variant: "destructive"
+      })
+    } finally {
+      setIsDeletingAddress(false)
+      setIsDeleteDialogOpen(false)
+      setAddressToDelete(null)
+    }
   }
 
   if (status === 'loading' || isLoading) {
@@ -419,7 +635,10 @@ export default function DashboardPage() {
                       <CardTitle className="text-2xl">Mis Direcciones</CardTitle>
                       <CardDescription className="text-base">Gestiona tus direcciones de envío</CardDescription>
                     </div>
-                    <Button className="w-full sm:w-auto bg-pink-600 hover:bg-pink-700 h-12 text-base flex items-center justify-center gap-2">
+                    <Button 
+                      className="w-full sm:w-auto bg-pink-600 hover:bg-pink-700 h-12 text-base flex items-center justify-center gap-2"
+                      onClick={() => setIsAddressDialogOpen(true)}
+                    >
                       <Plus className="h-5 w-5" />
                       Agregar Dirección
                     </Button>
@@ -427,41 +646,58 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {addresses.map((address) => (
-                      <div key={address.id} className="border rounded-xl p-6 hover:shadow-md transition-shadow">
-                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                          <div className="flex items-start gap-3">
-                            <MapPin className="h-6 w-6 text-pink-600 flex-shrink-0 mt-1" />
-                            <div className="space-y-2">
-                              {address.predeterminada && (
-                                <span className="inline-block text-sm bg-pink-100 text-pink-600 px-3 py-1 rounded-full font-medium">
-                                  Predeterminada
-                                </span>
-                              )}
-                              <div className="space-y-1 text-base">
-                                <p className="font-medium">
-                                  {address.calle} {address.numeroExterior}
-                                  {address.numeroInterior && `, Int. ${address.numeroInterior}`}
-                                </p>
-                                <p className="text-gray-600">{address.colonia}</p>
-                                <p className="text-gray-600">{address.ciudad}, {address.estado}</p>
-                                <p className="text-gray-600">CP: {address.codigoPostal}</p>
+                    {direcciones.length === 0 ? (
+                      <div className="text-center py-8">
+                        <MapPin className="h-10 w-10 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-500">No tienes direcciones guardadas</p>
+                      </div>
+                    ) : (
+                      direcciones.map((address) => (
+                        <div key={address.id} className="border rounded-xl p-6 hover:shadow-md transition-shadow">
+                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                            <div className="flex items-start gap-3">
+                              <MapPin className="h-6 w-6 text-pink-600 flex-shrink-0 mt-1" />
+                              <div className="space-y-2">
+                                {address.predeterminada && (
+                                  <span className="inline-block text-sm bg-pink-100 text-pink-600 px-3 py-1 rounded-full font-medium">
+                                    Predeterminada
+                                  </span>
+                                )}
+                                <div className="space-y-1 text-base">
+                                  <p className="font-medium">
+                                    {address.calle} {address.numeroExterior}
+                                    {address.numeroInterior && `, Int. ${address.numeroInterior}`}
+                                  </p>
+                                  <p className="text-gray-600">{address.colonia}</p>
+                                  <p className="text-gray-600">{address.ciudad}, {address.estado}</p>
+                                  <p className="text-gray-600">CP: {address.codigoPostal}</p>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <div className="flex flex-row sm:flex-col gap-2">
-                            <Button variant="outline" size="sm" className="flex-1 sm:w-24">
-                              Editar
-                            </Button>
-                            {!address.predeterminada && (
+                            <div className="flex flex-row sm:flex-col gap-2">
                               <Button variant="outline" size="sm" className="flex-1 sm:w-24">
-                                Eliminar
+                                Editar
                               </Button>
-                            )}
+                              {!address.predeterminada && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="flex-1 sm:w-24"
+                                  onClick={() => handleDeleteAddress(address.id)}
+                                  disabled={isDeletingAddress}
+                                >
+                                  {isDeletingAddress ? (
+                                    <div className="w-4 h-4 border-2 border-pink-600 border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    "Eliminar"
+                                  )}
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -527,6 +763,250 @@ export default function DashboardPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modal para agregar dirección */}
+      <Dialog open={isAddressDialogOpen} onOpenChange={setIsAddressDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Agregar nueva dirección</DialogTitle>
+            <DialogDescription>
+              Completa el formulario para agregar una nueva dirección de envío.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleAddressSubmit} className="space-y-4 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="calle" className="text-sm font-medium">
+                  Calle
+                </Label>
+                <Input
+                  id="calle"
+                  name="calle"
+                  value={addressFormData.calle}
+                  onChange={handleAddressChange}
+                  placeholder="Av. Insurgentes"
+                  className={addressErrors.calle ? "border-red-500" : ""}
+                />
+                {addressErrors.calle && (
+                  <p className="text-red-500 text-sm">{addressErrors.calle}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="numeroExterior" className="text-sm font-medium">
+                  Número Exterior
+                </Label>
+                <Input
+                  id="numeroExterior"
+                  name="numeroExterior"
+                  value={addressFormData.numeroExterior}
+                  onChange={handleAddressChange}
+                  placeholder="123"
+                  className={addressErrors.numeroExterior ? "border-red-500" : ""}
+                />
+                {addressErrors.numeroExterior && (
+                  <p className="text-red-500 text-sm">{addressErrors.numeroExterior}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="numeroInterior" className="text-sm font-medium">
+                  Número Interior (opcional)
+                </Label>
+                <Input
+                  id="numeroInterior"
+                  name="numeroInterior"
+                  value={addressFormData.numeroInterior}
+                  onChange={handleAddressChange}
+                  placeholder="Depto. 2B"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="colonia" className="text-sm font-medium">
+                  Colonia
+                </Label>
+                <Input
+                  id="colonia"
+                  name="colonia"
+                  value={addressFormData.colonia}
+                  onChange={handleAddressChange}
+                  placeholder="Roma Norte"
+                  className={addressErrors.colonia ? "border-red-500" : ""}
+                />
+                {addressErrors.colonia && (
+                  <p className="text-red-500 text-sm">{addressErrors.colonia}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="ciudad" className="text-sm font-medium">
+                  Ciudad
+                </Label>
+                <Input
+                  id="ciudad"
+                  name="ciudad"
+                  value={addressFormData.ciudad}
+                  onChange={handleAddressChange}
+                  placeholder="Ciudad de México"
+                  className={addressErrors.ciudad ? "border-red-500" : ""}
+                />
+                {addressErrors.ciudad && (
+                  <p className="text-red-500 text-sm">{addressErrors.ciudad}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="estado" className="text-sm font-medium">
+                  Estado
+                </Label>
+                <Select 
+                  value={addressFormData.estado} 
+                  onValueChange={(value) => handleSelectChange(value, 'estado')}
+                >
+                  <SelectTrigger id="estado" className={addressErrors.estado ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Selecciona un estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Aguascalientes">Aguascalientes</SelectItem>
+                    <SelectItem value="Baja California">Baja California</SelectItem>
+                    <SelectItem value="Baja California Sur">Baja California Sur</SelectItem>
+                    <SelectItem value="Campeche">Campeche</SelectItem>
+                    <SelectItem value="Chiapas">Chiapas</SelectItem>
+                    <SelectItem value="Chihuahua">Chihuahua</SelectItem>
+                    <SelectItem value="CDMX">Ciudad de México</SelectItem>
+                    <SelectItem value="Coahuila">Coahuila</SelectItem>
+                    <SelectItem value="Colima">Colima</SelectItem>
+                    <SelectItem value="Durango">Durango</SelectItem>
+                    <SelectItem value="Estado de México">Estado de México</SelectItem>
+                    <SelectItem value="Guanajuato">Guanajuato</SelectItem>
+                    <SelectItem value="Guerrero">Guerrero</SelectItem>
+                    <SelectItem value="Hidalgo">Hidalgo</SelectItem>
+                    <SelectItem value="Jalisco">Jalisco</SelectItem>
+                    <SelectItem value="Michoacán">Michoacán</SelectItem>
+                    <SelectItem value="Morelos">Morelos</SelectItem>
+                    <SelectItem value="Nayarit">Nayarit</SelectItem>
+                    <SelectItem value="Nuevo León">Nuevo León</SelectItem>
+                    <SelectItem value="Oaxaca">Oaxaca</SelectItem>
+                    <SelectItem value="Puebla">Puebla</SelectItem>
+                    <SelectItem value="Querétaro">Querétaro</SelectItem>
+                    <SelectItem value="Quintana Roo">Quintana Roo</SelectItem>
+                    <SelectItem value="San Luis Potosí">San Luis Potosí</SelectItem>
+                    <SelectItem value="Sinaloa">Sinaloa</SelectItem>
+                    <SelectItem value="Sonora">Sonora</SelectItem>
+                    <SelectItem value="Tabasco">Tabasco</SelectItem>
+                    <SelectItem value="Tamaulipas">Tamaulipas</SelectItem>
+                    <SelectItem value="Tlaxcala">Tlaxcala</SelectItem>
+                    <SelectItem value="Veracruz">Veracruz</SelectItem>
+                    <SelectItem value="Yucatán">Yucatán</SelectItem>
+                    <SelectItem value="Zacatecas">Zacatecas</SelectItem>
+                  </SelectContent>
+                </Select>
+                {addressErrors.estado && (
+                  <p className="text-red-500 text-sm">{addressErrors.estado}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="codigoPostal" className="text-sm font-medium">
+                  Código Postal
+                </Label>
+                <Input
+                  id="codigoPostal"
+                  name="codigoPostal"
+                  value={addressFormData.codigoPostal}
+                  onChange={handleAddressChange}
+                  placeholder="06700"
+                  maxLength={5}
+                  className={addressErrors.codigoPostal ? "border-red-500" : ""}
+                />
+                {addressErrors.codigoPostal && (
+                  <p className="text-red-500 text-sm">{addressErrors.codigoPostal}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 pt-2">
+              <Checkbox 
+                id="predeterminada" 
+                checked={addressFormData.predeterminada}
+                onCheckedChange={handleCheckboxChange}
+              />
+              <Label htmlFor="predeterminada" className="text-sm font-medium">
+                Establecer como dirección predeterminada
+              </Label>
+            </div>
+
+            <DialogFooter className="pt-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsAddressDialogOpen(false)}
+                disabled={isSubmittingAddress}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                type="submit"
+                className="bg-pink-600 hover:bg-pink-700"
+                disabled={isSubmittingAddress}
+              >
+                {isSubmittingAddress ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Guardar Dirección"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de confirmación para eliminar dirección */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Eliminar dirección</DialogTitle>
+            <DialogDescription>
+              ¿Desea eliminar esta dirección?
+            </DialogDescription>
+          </DialogHeader>
+          
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => {
+                setIsDeleteDialogOpen(false)
+                setAddressToDelete(null)
+              }}
+              disabled={isDeletingAddress}
+              className="sm:order-1"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              type="button"
+              onClick={confirmDelete}
+              disabled={isDeletingAddress}
+              className="bg-pink-600 hover:bg-pink-700 sm:order-2"
+            >
+              {isDeletingAddress ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  Eliminando...
+                </>
+              ) : (
+                "Confirmar"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

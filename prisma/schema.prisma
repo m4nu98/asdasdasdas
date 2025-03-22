@@ -28,6 +28,7 @@ model usuarios {
   // Relaciones
   tokensConfirmacion TokenConfirmacionEmail[]      // Relación con los tokens de confirmación
   tokensCambioContraseña TokenCambioContraseña[]   // Relación con los tokens de cambio de contraseña
+  direcciones Direcciones[]                      // Relación con las direcciones del usuario
 }
 
 model TokenConfirmacionEmail {
@@ -50,4 +51,22 @@ model TokenCambioContraseña {
   utilizado    Boolean  @default(false)     // Indica si el token ya fue usado
 
   usuario      usuarios @relation(fields: [userId], references: [id]) // Relación con el usuario
+}
+
+model Direcciones {
+  id             String   @id @default(cuid()) // Identificador único
+  userId         String                       // Referencia al usuario
+  calle          String                       // Nombre de la calle
+  numeroExterior String                       // Número exterior
+  numeroInterior String?                      // Número interior (opcional)
+  colonia        String                       // Colonia o barrio
+  ciudad         String                       // Ciudad
+  estado         String                       // Estado
+  codigoPostal   String                       // Código postal
+  predeterminada Boolean  @default(false)     // Indica si es la dirección predeterminada
+  createdAt      DateTime @default(now())     // Fecha de creación
+  updatedAt      DateTime @updatedAt          // Fecha de última actualización
+
+  // Relación con el usuario
+  usuario        usuarios @relation(fields: [userId], references: [id])
 }
