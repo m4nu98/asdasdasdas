@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     }
 
     console.log('Buscando usuario en la base de datos...')
-    const user = await prisma.user.findUnique({
+    const user = await prisma.usuarios.findUnique({
       where: { email },
       select: {
         nombre: true,

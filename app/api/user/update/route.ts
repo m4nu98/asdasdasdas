@@ -44,7 +44,7 @@ export async function PUT(request: Request) {
 
     console.log('Buscando usuario en la base de datos...')
     // Buscar el usuario primero para verificar que existe
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.usuarios.findUnique({
       where: { email: session.user.email }
     })
 
@@ -58,7 +58,7 @@ export async function PUT(request: Request) {
 
     console.log('Usuario encontrado, procediendo a actualizar...')
     // Actualizar el usuario
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await prisma.usuarios.update({
       where: {
         email: session.user.email
       },
